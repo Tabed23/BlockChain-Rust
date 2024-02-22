@@ -1,43 +1,49 @@
+use std::{fmt::{ self, Debug, Formatter }, vec};
+use crate::{u128_bytes, u32_bytes, u64_bytes, BlockHash, Hashable};
+
 pub struct Block {
-    timestamp: u128,
-    transaction: String,
-    prev_hash: String,
-    hash: String,
-    height: usize,
-    nonce: i32,
+    pub index : u32,
+    pub timestamp : u128,
+    pub hash : BlockHash,
+    pub prev_block_hash : BlockHash,
+    pub nonce: u64,
+    pub payload: String
+
 }
 
-pub struct Blockchain {
-    blocks: Vec<Block>, // Vector of Block
+impl Debug for Block {
+    fn fmt (&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Block[{}]:{} at : {} with: {}", &self.index,hex::encode(&self.hash), &self.timestamp, &self.payload)
+    }
 }
 
 impl Block {
-    pub fn new_block(data: String, prev: String, height: usize) -> Result<Block> {
-        let timestamp: i128 = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).as_millis();
 
-        let mut block = Block {
-            timestamp: timestamp,
-            transaction: data,
-            prev_hash: prev,
-            hash: String::new(),
-            height,
-            nonce: 0,
-        };
-
-        block.run_proof_if_work()?;
-        OK(block)
-    }
-
-    fn run_proof_if_work(&mut self) -> Result<()> {
-        info!("Mining the  block");
-        while !self.validate()? {
-            self.nonce += 1;
+    pub fn new(index : u32, timestamp : u128, prev_block_hash : BlockHash, nonce: u64,payload: String)-> Self{
+        Block{
+            index,
+            timestamp ,
+            hash: vec![0; 32],
+            prev_block_hash,
+            nonce,
+            payload,
         }
 
-        let data: Vec<u8> = self.prepare_hash_data()?;
-        let mut hasher: Sha256 = Sha256::new();
-        hasher.input(&data[..]);
-        self.hash = hasher.result_str();
-        OK(())
+    }
+}
+
+
+impl  Hashable for Block {
+    fn bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![];
+
+        bytes.extend(&u32_bytes(&self.index));
+        bytes.extend(&u128_bytes(&self.timestamp));
+        bytes.extend(&self.prev_block_hash);
+        bytes.extend(&u64_bytes(&self.nonce));
+        bytes.extend(self.payload.bytes());
+
+        bytes
+
     }
 }
